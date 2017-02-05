@@ -1,0 +1,6 @@
+/var/log/backup.log /var/log/db-backup.log {
+    missingok
+    monthly
+    notifempty
+    compress
+}
