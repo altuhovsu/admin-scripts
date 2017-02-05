@@ -75,7 +75,7 @@ if [ "$ENCRYPTION" -eq "1" ]; then
 fi
 
 
-DUPLICITY_INCLUDE_LIST=`tempfile`
+DUPLICITY_INCLUDE_LIST=`mktemp`
 
 for i in $(seq 0 $((${#INCLUDE[*]} - 1))); do
   echo "+ ${INCLUDE[$i]}" >> $DUPLICITY_INCLUDE_LIST
