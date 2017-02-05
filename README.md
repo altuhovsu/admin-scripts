@@ -1,6 +1,6 @@
 This repository contains simple administration scripts I use on my servers. 
 
-# Handmade backup system (files+mysql badabases) based on duplicity+percona-xtrabackup
+# Handmade backup system (files+mysql databases) based on duplicity+percona-xtrabackup
 
 - [duplicity.sh](admin-scripts/wiki/duplicity.sh): Performs encrypted, incremental backups of the specified directories to a remote server using [duplicity](http://duplicity.nongnu.org).
 
