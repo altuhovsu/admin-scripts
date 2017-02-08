@@ -89,7 +89,7 @@ done
 
 echo "- **" >> $DUPLICITY_INCLUDE_LIST
 
-BACKUP_SETTINGS="--verbosity=$VERBOSITY --allow-source-mismatch --volsize=$MAX_VOLUME_SIZE --exclude-filelist=$DUPLICITY_EXCLUDE_LIST --exclude-globbing-filelist=$DUPLICITY_INCLUDE_LIST --asynchronous-upload / $BACKUPS_REPOSITORY"
+BACKUP_SETTINGS="--verbosity=$VERBOSITY --allow-source-mismatch --volsize=$MAX_VOLUME_SIZE --archive-dir=$BACKUP_CACHE_DIR --exclude-filelist=$DUPLICITY_EXCLUDE_LIST --exclude-globbing-filelist=$DUPLICITY_INCLUDE_LIST --asynchronous-upload / $BACKUPS_REPOSITORY"
 DUPLICITY="$(which nice) -n 15 $IONICE_COMMAND $DUPLICITY"
 ARGS="$@"
 

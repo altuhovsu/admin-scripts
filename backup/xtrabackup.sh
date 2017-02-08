@@ -51,7 +51,7 @@ INNOBACKUPEX_COMMAND="$(which nice) -n 15 $IONICE_COMMAND $INNOBACKUPEX"
 RSYNC_COMMAND="$(which nice) -n 15 $IONICE_COMMAND  $(which rsync)"
 
 full_backup () {
-	$INNOBACKUPEX_COMMAND --slave-info --user="$MYSQL_USER" --password="$MYSQL_PASS" "$FULLS_DIRECTORY"
+	$INNOBACKUPEX_COMMAND --defaults-file=$PATH_TO_MYSQL_CONFIG --slave-info --user="$MYSQL_USER" --password="$MYSQL_PASS" "$FULLS_DIRECTORY"
 
 	NEW_BACKUP_DIR=$(find $FULLS_DIRECTORY -mindepth 1 -maxdepth 1 -type d -exec ls -dt {} \+ | head -1)
 
