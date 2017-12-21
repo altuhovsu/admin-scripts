@@ -77,19 +77,17 @@ fi
 
 DUPLICITY_INCLUDE_LIST=`mktemp`
 
+for i in $(seq 0 $((${#EXCLUDE[*]} - 1))); do
+  echo "- ${EXCLUDE[$i]}" >> $DUPLICITY_INCLUDE_LIST
+done
+
 for i in $(seq 0 $((${#INCLUDE[*]} - 1))); do
   echo "+ ${INCLUDE[$i]}" >> $DUPLICITY_INCLUDE_LIST
 done
 
-DUPLICITY_EXCLUDE_LIST=`mktemp`
-
-for i in $(seq 0 $((${#EXCLUDE[*]} - 1))); do
-  echo "- ${EXCLUDE[$i]}" >> $DUPLICITY_EXCLUDE_LIST
-done
-
 echo "- **" >> $DUPLICITY_INCLUDE_LIST
 
-BACKUP_SETTINGS="--verbosity=$VERBOSITY --allow-source-mismatch --volsize=$MAX_VOLUME_SIZE --archive-dir=$BACKUP_CACHE_DIR --exclude-filelist=$DUPLICITY_EXCLUDE_LIST --exclude-globbing-filelist=$DUPLICITY_INCLUDE_LIST --asynchronous-upload / $BACKUPS_REPOSITORY"
+BACKUP_SETTINGS="--verbosity=$VERBOSITY --allow-source-mismatch --volsize=$MAX_VOLUME_SIZE --archive-dir=$BACKUP_CACHE_DIR --include-filelist=$DUPLICITY_INCLUDE_LIST --asynchronous-upload / $BACKUPS_REPOSITORY"
 DUPLICITY="$(which nice) -n 15 $IONICE_COMMAND $DUPLICITY"
 ARGS="$@"
 
