@@ -29,6 +29,18 @@ EOF
 	die "Configuration has been initialised in $CONFIG_FILE. \nPlease make sure all settings are correctly defined/customised - aborting."
 fi
 
+if [[ -n $MOUNT_NAME && -n $MOUNT_CMD ]]; then
+
+mount | grep $MOUNT_NAME >/dev/null
+[ $? -eq 0 ]  || $MOUNT_CMD
+
+mount | grep $MOUNT_NAME >/dev/null
+[ $? -eq 0 ]  || die "backup not mounted!"
+
+fi
+
+[ -d $BACKUPS_DIRECTORY ] || die "Backup directory does not exists"
+
 [ -d $MYSQL_DATA_DIR ] || die "Please ensure the MYSQL_DATA_DIR setting in the configuration file points to the directory containing the MySQL databases."
 [ -n "$MYSQL_USER" -a -n "$MYSQL_PASS" ] || die "Please ensure MySQL username and password are properly set in the configuration file."
 
