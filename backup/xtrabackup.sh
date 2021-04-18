@@ -177,23 +177,35 @@ elif [ "$1" = "restore" ]; then
 			$RSYNC_COMMAND --quiet -ah --delete $FULL_BACKUP/ $DESTINATION  &>> $LOG_FILE || fail
 			echo -e "...done.\n"
 
-			echo "Preparing the base backup in the destination..."
-			#$XTRABACKUP_COMMAND --prepare --apply-log-only --target-dir=$DESTINATION &>> $LOG_FILE || fail
-      $INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION &>> $LOG_FILE || fail
-			echo -e "...done.\n"
-		
-			for INCREMENTAL in $(cat $BACKUP/backup.chain | tail -n +2); do
-				echo -e "Applying incremental from $INCREMENTAL...\n"
-				#$XTRABACKUP_COMMAND  --prepare --apply-log-only --target-dir=$DESTINATION --incremental-dir=$INCREMENTAL  &>> $LOG_FILE || fail
-        $INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION --incremental-dir=$INCREMENTAL &>> $LOG_FILE || fail
-				echo -e "...done.\n"
-			done
+	    echo "Preparing the base backup in the destination..."
+	    $XTRABACKUP_COMMAND --prepare --apply-log-only --target-dir=$DESTINATION &>> $LOG_FILE || fail
+	    #$INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION &>> $LOG_FILE || fail
+	    echo -e "...done.\n"
 
-			echo "Finalising the destination..."
-			#$XTRABACKUP_COMMAND --prepare --target-dir=$DESTINATION  &>> $LOG_FILE || fail
-      $INNOBACKUPEX_COMMAND --apply-log  $DESTINATION &>> $LOG_FILE || fail
-			echo -e "...done.\n"
-		fi
+	    for INCREMENTAL in $(cat $BACKUP/backup.chain | tail -n +2); do
+		INCREMENTALREST="${INCREMENTAL}_rest"
+		echo -e "Copy incremental from $INCREMENTAL to $INCREMENTALREST\n"
+		mkdir $INCREMENTALREST
+		$RSYNC_COMMAND --quiet -ah --delete $INCREMENTAL/ $INCREMENTALREST  &>> $LOG_FILE || fail
+		echo -e "...done.\n"
+
+		echo -e "Applying incremental from $INCREMENTALREST...\n"
+		$XTRABACKUP_COMMAND  --prepare --apply-log-only --target-dir=$DESTINATION --incremental-dir=$INCREMENTALREST  &>> $LOG_FILE || fail
+		#$INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION --incremental-dir=$INCREMENTAL &>> $LOG_FILE || fail
+		echo -e "...done.\n"
+
+		echo -e "Delete $INCREMENTALREST\n"
+		rm -r -f $INCREMENTALREST  &>> $LOG_FILE || fail
+		echo -e "...done.\n"
+
+	    done
+
+	    echo "Finalising the destination..."
+	    $XTRABACKUP_COMMAND --prepare --target-dir=$DESTINATION  &>> $LOG_FILE || fail
+	    #$INNOBACKUPEX_COMMAND --apply-log  $DESTINATION &>> $LOG_FILE || fail
+	    echo -e "...done.\n"
+	fi
+
 		
 		rm $LOG_FILE # no errors, no need to keep it
 		
