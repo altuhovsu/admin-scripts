@@ -10,6 +10,7 @@ fail () {
 }
 
 ulimit -n 50000
+[ $? -eq 0 ]  || die "could not set ulimit -n to 50000"
 
 INNOBACKUPEX=$(which innobackupex)
 [ -f "$INNOBACKUPEX" ] || die "innobackupex script not found - please ensure xtrabackup is installed before proceeding."
