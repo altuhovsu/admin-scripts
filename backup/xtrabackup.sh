@@ -9,6 +9,8 @@ fail () {
 	die "...FAILED! See $LOG_FILE for details - aborting.\n"
 }
 
+ulimit -n 50000
+
 INNOBACKUPEX=$(which innobackupex)
 [ -f "$INNOBACKUPEX" ] || die "innobackupex script not found - please ensure xtrabackup is installed before proceeding."
 
@@ -35,12 +37,11 @@ mount | grep $MOUNT_NAME >/dev/null
 [ $? -eq 0 ]  || $MOUNT_CMD
 
 mount | grep $MOUNT_NAME >/dev/null
-[ $? -eq 0 ]  || die "backup not mounted!"
+[ $? -eq 0 ]  || die "backup not mounted"
 
 fi
 
 [ -d $BACKUPS_DIRECTORY ] || die "Backup directory does not exists"
-
 [ -d $MYSQL_DATA_DIR ] || die "Please ensure the MYSQL_DATA_DIR setting in the configuration file points to the directory containing the MySQL databases."
 [ -n "$MYSQL_USER" -a -n "$MYSQL_PASS" ] || die "Please ensure MySQL username and password are properly set in the configuration file."
 
@@ -63,7 +64,8 @@ INNOBACKUPEX_COMMAND="$(which nice) -n 15 $IONICE_COMMAND $INNOBACKUPEX"
 RSYNC_COMMAND="$(which nice) -n 15 $IONICE_COMMAND  $(which rsync)"
 
 full_backup () {
-	$INNOBACKUPEX_COMMAND --defaults-file=$PATH_TO_MYSQL_CONFIG --slave-info --user="$MYSQL_USER" --password="$MYSQL_PASS" "$FULLS_DIRECTORY"
+	$INNOBACKUPEX_COMMAND --defaults-file=$PATH_TO_MYSQL_CONFIG --slave-info --user="$MYSQL_USER" --password="$MYSQL_PASS" "$FULLS_DIRECTORY" 2> /dev/null
+	[ $? -eq 0 ]  || die "full backup failed!"
 
 	NEW_BACKUP_DIR=$(find $FULLS_DIRECTORY -mindepth 1 -maxdepth 1 -type d -exec ls -dt {} \+ | head -1)
 
@@ -73,7 +75,8 @@ full_backup () {
 incremental_backup () {
 	LAST_BACKUP=${LAST_CHECKPOINTS%/xtrabackup_checkpoints}
 
-	$INNOBACKUPEX_COMMAND --slave-info --user="$MYSQL_USER" --password="$MYSQL_PASS" --incremental --incremental-basedir="$LAST_BACKUP" "$INCREMENTALS_DIRECTORY"
+	$INNOBACKUPEX_COMMAND --slave-info --user="$MYSQL_USER" --password="$MYSQL_PASS" --incremental --incremental-basedir="$LAST_BACKUP" "$INCREMENTALS_DIRECTORY" 2> /dev/null
+	[ $? -eq 0 ]  || die "incr backup failed!"
 
 	NEW_BACKUP_DIR=$(find $INCREMENTALS_DIRECTORY -mindepth 1 -maxdepth 1 -type d -exec ls -dt {} \+ | head -1)
 	cp $LAST_BACKUP/backup.chain $NEW_BACKUP_DIR/
@@ -175,31 +178,20 @@ elif [ "$1" = "restore" ]; then
 			echo -e "...done.\n"
 
 			echo "Preparing the base backup in the destination..."
-			$XTRABACKUP_COMMAND --prepare --apply-log-only --target-dir=$DESTINATION &>> $LOG_FILE || fail
-			#$INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION &>> $LOG_FILE || fail
+			#$XTRABACKUP_COMMAND --prepare --apply-log-only --target-dir=$DESTINATION &>> $LOG_FILE || fail
+      $INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION &>> $LOG_FILE || fail
 			echo -e "...done.\n"
 		
 			for INCREMENTAL in $(cat $BACKUP/backup.chain | tail -n +2); do
-				INCREMENTALREST="${INCREMENTAL}_rest"
-				echo -e "Copy incremental from $INCREMENTAL to $INCREMENTALREST\n"
-				mkdir $INCREMENTALREST
-				$RSYNC_COMMAND --quiet -ah --delete $INCREMENTAL/ $INCREMENTALREST  &>> $LOG_FILE || fail
+				echo -e "Applying incremental from $INCREMENTAL...\n"
+				#$XTRABACKUP_COMMAND  --prepare --apply-log-only --target-dir=$DESTINATION --incremental-dir=$INCREMENTAL  &>> $LOG_FILE || fail
+        $INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION --incremental-dir=$INCREMENTAL &>> $LOG_FILE || fail
 				echo -e "...done.\n"
-
-				echo -e "Applying incremental from $INCREMENTALREST...\n"
-				$XTRABACKUP_COMMAND  --prepare --apply-log-only --target-dir=$DESTINATION --incremental-dir=$INCREMENTALREST  &>> $LOG_FILE || fail
-				#$INNOBACKUPEX_COMMAND --apply-log --redo-only $DESTINATION --incremental-dir=$INCREMENTAL &>> $LOG_FILE || fail
-				echo -e "...done.\n"
-
-				echo -e "Delete $INCREMENTALREST\n"
-				rm -r -f $INCREMENTALREST  &>> $LOG_FILE || fail
-				echo -e "...done.\n"
-
 			done
 
 			echo "Finalising the destination..."
-			$XTRABACKUP_COMMAND --prepare --target-dir=$DESTINATION  &>> $LOG_FILE || fail
-			#$INNOBACKUPEX_COMMAND --apply-log  $DESTINATION &>> $LOG_FILE || fail
+			#$XTRABACKUP_COMMAND --prepare --target-dir=$DESTINATION  &>> $LOG_FILE || fail
+      $INNOBACKUPEX_COMMAND --apply-log  $DESTINATION &>> $LOG_FILE || fail
 			echo -e "...done.\n"
 		fi
 		
@@ -219,11 +211,16 @@ fi
 
 BACKUP_CHAINS=`ls $FULLS_DIRECTORY | wc -l`
 
+echo "Deleteing old backups:" $BACKUP_CHAINS, $MAX_BACKUP_CHAINS
+
 if [[ $BACKUP_CHAINS -gt $MAX_BACKUP_CHAINS ]]; then
 	CHAINS_TO_DELETE=$(expr $BACKUP_CHAINS - $MAX_BACKUP_CHAINS)
 	
+	echo "Chains to delete:" $CHAINS_TO_DELETE
+    
 	for FULL_BACKUP in `ls $FULLS_DIRECTORY -t |  tail -n $CHAINS_TO_DELETE`; do
 		grep -l $FULLS_DIRECTORY/$FULL_BACKUP $INCREMENTALS_DIRECTORY/**/backup.chain | while read incremental; do rm -rf "${incremental%/backup.chain}"; done
+		echo "Deleting full backup and incr" $FULLS_DIRECTORY/$FULL_BACKUP
 		$IONICE_COMMAND rm -rf $FULLS_DIRECTORY/$FULL_BACKUP
 	done
 fi
