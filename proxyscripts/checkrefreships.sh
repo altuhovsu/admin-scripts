@@ -30,5 +30,5 @@ done < $iplist
 
 if [ -n "${ipstorefresh}" ]; then
     echo "Refreshing IPs: $ipstorefresh"
-    curl --fail --silent --show-error -X POST "https://brightdata.com/api/zone/ips/refresh" -H "Content-Type: application/json" -H "Authorization: Bearer $uthtoken" -d "{\"zone\":\"${zone}\",\"ips\":[${ipstorefresh%?}]}"
+    curl --fail --silent --show-error -X POST "https://brightdata.com/api/zone/ips/refresh" -H "Content-Type: application/json" -H "Authorization: Bearer $authtoken" -d "{\"zone\":\"${zone}\",\"ips\":[${ipstorefresh%?}]}"
 fi
